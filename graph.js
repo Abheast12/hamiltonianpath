@@ -1,26 +1,46 @@
-var width = window.innerWidth;
-var height = window.innerHeight;
+// var width = window.innerWidth;
+// var height = window.innerHeight;
+var userHasInteractedNodes = false;
+var userHasInteractedEdges = false;
 var nodeRadius = 20;
-var force;
+var force, graphWidth, graphHeight;
 function generateGraph() {
     d3.select("svg").remove();
-    var svg = d3.select("body").append("svg")
-        .attr("width", width)
-        .attr("height", height);
+    var svg = d3.select("#graph").append("svg")  // Append the SVG to the #graph div
+        .attr("width", "100%")
+        .attr("height", "100%");
 
     var numNodes = document.getElementById("nodes").value;
-    var linksText = document.getElementById("links").value;
+    var linksText = document.getElementById("links").value.trim();
+
+    if (!userHasInteractedEdges || !userHasInteractedNodes) {
+        return;
+    }
+
+    graphWidth = document.getElementById("graph").clientWidth;
+    graphHeight = document.getElementById("graph").clientHeight;
 
     var nodes = Array.from({length: numNodes}, (_, i) => ({id: i + 1}));
-    var links = linksText.split("\n").map(function(link) {
-        var nodes = link.split(" ");
-        return {source: nodes[0] - 1, target: nodes[1] - 1};
+    var linkNumbers = linksText.split(/\s+/);
+    var linkPairs = [];
+    for (var i = 0; i < linkNumbers.length; i += 2) {
+        linkPairs.push([+linkNumbers[i], +linkNumbers[i + 1]]);
+    }
+
+    // Filter out any pairs that contain a number outside the range 1-n
+    linkPairs = linkPairs.filter(function(pair) {
+        return pair[0] >= 1 && pair[0] <= numNodes && pair[1] >= 1 && pair[1] <= numNodes && pair[0] != pair[1];
+    });
+
+    // Create the links
+    var links = linkPairs.map(function(pair) {
+        return {source: pair[0] - 1, target: pair[1] - 1};
     });
 
     force = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).distance(200).strength(0.1))
+        .force("link", d3.forceLink(links).distance(200).strength(0.3))
         .force("charge", d3.forceManyBody().strength(-50))
-        .force("center", d3.forceCenter(width / 2, height / 2));
+        .force("center", d3.forceCenter(graphWidth / 2, graphHeight / 2));
 
     var link = svg.selectAll(".link")
         .data(links)
@@ -84,8 +104,10 @@ function dragstarted(d) {
 }
 
 function dragged(d) {
-    d.fx = d3.event.x;  // Update the fixed position of the node
-    d.fy = d3.event.y;
+    // var graphWidth = document.getElementById("graph").clientWidth;
+    // var graphHeight = document.getElementById("graph").clientHeight;
+    d.fx = d.x = Math.max(nodeRadius, Math.min(graphWidth - nodeRadius, d3.event.x));
+    d.fy = d.y = Math.max(nodeRadius, Math.min(graphHeight - nodeRadius, d3.event.y));
 }
 
 function dragended(d) {
