@@ -1,5 +1,6 @@
 // var width = window.innerWidth;
 // var height = window.innerHeight;
+import * as d3 from 'd3';
 var userHasInteractedNodes = false;
 var userHasInteractedEdges = false;
 var nodeRadius = 20;
@@ -19,7 +20,7 @@ function generateGraph() {
 
     graphWidth = document.getElementById("graph").clientWidth;
     graphHeight = document.getElementById("graph").clientHeight;
-
+    const hamiltonian = require('./build/Release/hamiltonian');
     var nodes = Array.from({length: numNodes}, (_, i) => ({id: i + 1}));
     var linkNumbers = linksText.split(/\s+/);
     var linkPairs = [];
@@ -31,7 +32,7 @@ function generateGraph() {
     linkPairs = linkPairs.filter(function(pair) {
         return pair[0] >= 1 && pair[0] <= numNodes && pair[1] >= 1 && pair[1] <= numNodes && pair[0] != pair[1];
     });
-
+    hamiltonian.getVariables(nodes, linkPairs);
     // Create the links
     var links = linkPairs.map(function(pair) {
         return {source: pair[0] - 1, target: pair[1] - 1};
