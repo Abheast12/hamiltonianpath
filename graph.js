@@ -12,7 +12,18 @@ var force, graphWidth, graphHeight;
 //         generateGraph();
 //     }
 // };
+var isRuntimeInitialized = false;
+
+Module.onRuntimeInitialized = function() {
+    console.log("Emscripten runtime initialized.");
+    isRuntimeInitialized = true;
+    generateGraph();
+};
 function generateGraph() {
+    if (!isRuntimeInitialized) {
+        console.log("Waiting for Emscripten runtime to initialize.");
+        return;
+    }
     console.log("generateGraph is called");
     d3.select("svg").remove();
     var svg = d3.select("#graph").append("svg")  // Append the SVG to the #graph div
@@ -47,27 +58,31 @@ function generateGraph() {
     var links = linkPairs.map(function(pair) {
         return {source: pair[0] - 1, target: pair[1] - 1};
     });
-    const nodesLength = nodes.length;
-    const nodesNumBytes = nodesLength * Int32Array.BYTES_PER_ELEMENT;
-    // Module._free(nodesNumBytes);
-    // console.log(Module);
-    const nodesPtr = Module._malloc(nodesNumBytes);
-    const nodesHeapBytes = new Uint8Array(Module.HEAP32.buffer, nodesPtr, nodesNumBytes);
-    nodesHeapBytes.set(new Int32Array(nodes));
 
-    // Prepare linkPairs data
-    const linkPairsLength = linkPairs.length;
-    const linkPairsNumBytes = linkPairsLength * Int32Array.BYTES_PER_ELEMENT;
-    const linkPairsPtr = Module._malloc(linkPairsNumBytes);
-    const linkPairsHeapBytes = new Uint8Array(Module.HEAP32.buffer, linkPairsPtr, linkPairsNumBytes);
-    linkPairsHeapBytes.set(new Int32Array(linkPairs.flat()));
+    // Extract ids from nodes and source, target from links
+    let nodesIds = nodes.map(node => node.id);
+    let linksFlat = links.flatMap(link => [link.source + 1, link.target + 1]); // Adding 1 because C++ array starts from 1
+
+    // Allocate memory
+    let nodesPtr = Module._malloc(nodesIds.length * 4);
+    let linksPtr = Module._malloc(linksFlat.length * 4);
+
+    // Create Int32Array views on the heap at the pointers
+    let nodesHeap = new Int32Array(Module.HEAP32.buffer, nodesPtr, nodesIds.length);
+    let linksHeap = new Int32Array(Module.HEAP32.buffer, linksPtr, linksFlat.length);
+
+    // Copy data into memory
+    nodesHeap.set(nodesIds);
+    linksHeap.set(linksFlat);
 
     // Call the C++ function
-    Module._receiveData(nodesHeapBytes.byteOffset, nodesLength, linkPairsHeapBytes.byteOffset, linkPairsLength);
+    Module._receiveData(nodesPtr, nodesIds.length, linksPtr, linksFlat.length);
+    
+    // Free memory
+    Module._free(nodesPtr);
+    Module._free(linksPtr);
+ 
 
-    // Free the memory
-    Module._free(nodesHeapBytes.byteOffset);
-    Module._free(linkPairsHeapBytes.byteOffset);
     force = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).distance(200).strength(0.3))
         .force("charge", d3.forceManyBody().strength(-50))

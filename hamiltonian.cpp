@@ -1,13 +1,13 @@
 #include <vector>
 #include <utility>
-#include<iostream>
+#include <iostream>
 
 extern "C" {
     // Function to receive data from JavaScript
     void receiveData(int* nodes, int nodesLength, int* linkPairs, int linkPairsLength) {
         std::vector<int> nodesVector(nodes, nodes + nodesLength);
         std::vector<std::pair<int, int>> linkPairsVector;
-
+    
         for(int i = 0; i < linkPairsLength; i += 2) {
             linkPairsVector.push_back(std::make_pair(linkPairs[i], linkPairs[i + 1]));
         }
