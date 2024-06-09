@@ -1,11 +1,19 @@
 // var width = window.innerWidth;
 // var height = window.innerHeight;
-import * as d3 from 'd3';
+// import * as d3 from 'd3';
 var userHasInteractedNodes = false;
 var userHasInteractedEdges = false;
+window.userHasInteractedNodes = userHasInteractedNodes;
+window.userHasInteractedEdges = userHasInteractedEdges;
 var nodeRadius = 20;
 var force, graphWidth, graphHeight;
+// var Module = {
+//     onRuntimeInitialized: function() {
+//         generateGraph();
+//     }
+// };
 function generateGraph() {
+    console.log("generateGraph is called");
     d3.select("svg").remove();
     var svg = d3.select("#graph").append("svg")  // Append the SVG to the #graph div
         .attr("width", "100%")
@@ -13,14 +21,17 @@ function generateGraph() {
 
     var numNodes = document.getElementById("nodes").value;
     var linksText = document.getElementById("links").value.trim();
-
-    if (!userHasInteractedEdges || !userHasInteractedNodes) {
+    // console.log("numNodes:", numNodes);
+    // console.log("linksText:", linksText);
+    // console.log(userHasInteractedNodes);
+    if (!window.userHasInteractedNodes || !window.userHasInteractedNodes) {
         return;
     }
-
+    // console.log("hi");
+    // console.log(Module._receiveData);
+    // console.log(Module);
     graphWidth = document.getElementById("graph").clientWidth;
     graphHeight = document.getElementById("graph").clientHeight;
-    const hamiltonian = require('./build/Release/hamiltonian');
     var nodes = Array.from({length: numNodes}, (_, i) => ({id: i + 1}));
     var linkNumbers = linksText.split(/\s+/);
     var linkPairs = [];
@@ -32,12 +43,31 @@ function generateGraph() {
     linkPairs = linkPairs.filter(function(pair) {
         return pair[0] >= 1 && pair[0] <= numNodes && pair[1] >= 1 && pair[1] <= numNodes && pair[0] != pair[1];
     });
-    hamiltonian.getVariables(nodes, linkPairs);
     // Create the links
     var links = linkPairs.map(function(pair) {
         return {source: pair[0] - 1, target: pair[1] - 1};
     });
+    const nodesLength = nodes.length;
+    const nodesNumBytes = nodesLength * Int32Array.BYTES_PER_ELEMENT;
+    // Module._free(nodesNumBytes);
+    // console.log(Module);
+    const nodesPtr = Module._malloc(nodesNumBytes);
+    const nodesHeapBytes = new Uint8Array(Module.HEAP32.buffer, nodesPtr, nodesNumBytes);
+    nodesHeapBytes.set(new Int32Array(nodes));
 
+    // Prepare linkPairs data
+    const linkPairsLength = linkPairs.length;
+    const linkPairsNumBytes = linkPairsLength * Int32Array.BYTES_PER_ELEMENT;
+    const linkPairsPtr = Module._malloc(linkPairsNumBytes);
+    const linkPairsHeapBytes = new Uint8Array(Module.HEAP32.buffer, linkPairsPtr, linkPairsNumBytes);
+    linkPairsHeapBytes.set(new Int32Array(linkPairs.flat()));
+
+    // Call the C++ function
+    Module._receiveData(nodesHeapBytes.byteOffset, nodesLength, linkPairsHeapBytes.byteOffset, linkPairsLength);
+
+    // Free the memory
+    Module._free(nodesHeapBytes.byteOffset);
+    Module._free(linkPairsHeapBytes.byteOffset);
     force = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).distance(200).strength(0.3))
         .force("charge", d3.forceManyBody().strength(-50))
@@ -116,5 +146,4 @@ function dragended(d) {
     d.fx = null;  // Unfix the position of the node
     d.fy = null;
 }
-generateGraph();
-console.log("test");
+window.generateGraph = generateGraph;
