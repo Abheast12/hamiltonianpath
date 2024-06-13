@@ -98,8 +98,10 @@ function generateGraph() {
     var result = Module.ccall('receiveData', 'number', ['number', 'number', 'number', 'number'], [nodesPtr, nodesIds.length, linksPtr, linksFlat.length]);
     var pairs = [];
     for (var i = 0; i < linkPairs.length; i++) {
-        var value = Module.getValue(result + i * 4, 'i32');
-        pairs.push(value);
+        var first = Module.getValue(result + i * 8, 'i32');
+        var second = Module.getValue(result + i * 8 + 4, 'i32');
+        pairs.push([first, second]);
+
     }
     console.log("pairs:");
     console.log(pairs);
@@ -118,6 +120,10 @@ function generateGraph() {
         .enter().append("line")
         .attr("class", "link");
 
+    pairs.forEach(pair => {
+        link.filter(d => (d.source.id === pair[0] && d.target.id === pair[1]) || (d.source.id === pair[1] && d.target.id === pair[0]))
+            .style("stroke", "red");
+    });
     var node = svg.selectAll(".node")
         .data(nodes)
         .enter().append("g")
