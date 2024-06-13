@@ -13,7 +13,22 @@ var force, graphWidth, graphHeight;
 //     }
 // };
 var isRuntimeInitialized = false;
-
+// var Module = {
+//     locateFile: function(path) {
+//       if (path.endsWith('.wasm')) {
+//         return 'hamiltonian.wasm';
+//       }
+//       return path;
+//     }
+// }
+// fetch('hamiltonian.wasm')
+//   .then(response => response.arrayBuffer())
+//   .then(bytes => {
+//     Module['wasmBinary'] = bytes;
+//     var script = document.createElement('script');
+//     script.src = 'hamiltonian.js';
+//     document.body.appendChild(script);
+//   });
 Module.onRuntimeInitialized = function() {
     console.log("Emscripten runtime initialized.");
     isRuntimeInitialized = true;
@@ -24,7 +39,8 @@ function generateGraph() {
         console.log("Waiting for Emscripten runtime to initialize.");
         return;
     }
-    console.log("generateGraph is called");
+    // console.log("generateGraph is called");
+    // console.log("time to die)");
     d3.select("svg").remove();
     var svg = d3.select("#graph").append("svg")  // Append the SVG to the #graph div
         .attr("width", "100%")
@@ -41,6 +57,7 @@ function generateGraph() {
     // console.log("hi");
     // console.log(Module._receiveData);
     // console.log(Module);
+    // console.log("here");
     graphWidth = document.getElementById("graph").clientWidth;
     graphHeight = document.getElementById("graph").clientHeight;
     var nodes = Array.from({length: numNodes}, (_, i) => ({id: i + 1}));
@@ -70,19 +87,27 @@ function generateGraph() {
     // Create Int32Array views on the heap at the pointers
     let nodesHeap = new Int32Array(Module.HEAP32.buffer, nodesPtr, nodesIds.length);
     let linksHeap = new Int32Array(Module.HEAP32.buffer, linksPtr, linksFlat.length);
-
+    
     // Copy data into memory
     nodesHeap.set(nodesIds);
     linksHeap.set(linksFlat);
 
+    // var receiveData = Module.cwrap('receiveData', 'number', ['number', 'number', 'number', 'number']);
+
     // Call the C++ function
-    Module._receiveData(nodesPtr, nodesIds.length, linksPtr, linksFlat.length);
-    
+    var result = Module.ccall('receiveData', 'number', ['number', 'number', 'number', 'number'], [nodesPtr, nodesIds.length, linksPtr, linksFlat.length]);
+    var pairs = [];
+    for (var i = 0; i < linkPairs.length; i++) {
+        var value = Module.getValue(result + i * 4, 'i32');
+        pairs.push(value);
+    }
+    console.log("pairs:");
+    console.log(pairs);
+        
     // Free memory
     Module._free(nodesPtr);
     Module._free(linksPtr);
- 
-
+    
     force = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).distance(200).strength(0.3))
         .force("charge", d3.forceManyBody().strength(-50))
