@@ -174,21 +174,21 @@ function generateGraph() {
     });
 }
 
-function dragstarted(d) {
-    if (!d3.event.active) force.alphaTarget(0.3).restart();  // Set the alpha target to a non-zero value and restart the simulation
+function dragstarted(event, d) {
+    if (!event.active) force.alphaTarget(0.3).restart();  // Set the alpha target to a non-zero value and restart the simulation
     d.fx = d.x;  // Fix the position of the node
     d.fy = d.y;
 }
 
-function dragged(d) {
+function dragged(event, d) {
     // var graphWidth = document.getElementById("graph").clientWidth;
     // var graphHeight = document.getElementById("graph").clientHeight;
-    d.fx = d.x = Math.max(nodeRadius, Math.min(graphWidth - nodeRadius, d3.event.x));
-    d.fy = d.y = Math.max(nodeRadius, Math.min(graphHeight - nodeRadius, d3.event.y));
+    d.fx = d.x = Math.max(nodeRadius, Math.min(graphWidth - nodeRadius, event.x));
+    d.fy = d.y = Math.max(nodeRadius, Math.min(graphHeight - nodeRadius, event.y));
 }
 
-function dragended(d) {
-    if (!d3.event.active) force.alphaTarget(0);  // Set the alpha target back to zero
+function dragended(event, d) {
+    if (!event.active) force.alphaTarget(0);  // Set the alpha target back to zero
     d.fx = null;  // Unfix the position of the node
     d.fy = null;
 }
