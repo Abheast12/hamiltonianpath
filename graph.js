@@ -51,7 +51,7 @@ function generateGraph() {
     // console.log("numNodes:", numNodes);
     // console.log("linksText:", linksText);
     // console.log(userHasInteractedNodes);
-    if (!window.userHasInteractedNodes || !window.userHasInteractedNodes) {
+    if (!window.userHasInteractedNodes || !window.userHasInteractedEdges) {
         return;
     }
     // console.log("hi");
